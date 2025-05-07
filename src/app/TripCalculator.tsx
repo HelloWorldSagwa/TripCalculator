@@ -1,5 +1,3 @@
-"use client";
-
 import React, { useState, useEffect } from 'react';
 
 // 통화 정보
@@ -1029,8 +1027,4 @@ const ExpenseApp = () => {
   );
 };
 
-// export default ExpenseApp;
-
-export default function Page() {
-  return <ExpenseApp />;
-}
+export default ExpenseApp;
