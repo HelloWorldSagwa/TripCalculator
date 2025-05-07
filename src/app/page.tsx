@@ -1,3 +1,5 @@
+'use client';
+
 import React, { useState, useEffect, MouseEvent, ChangeEvent } from 'react';
 
 // 타입 정의
