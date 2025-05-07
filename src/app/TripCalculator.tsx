@@ -1,60 +1,105 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, MouseEvent, ChangeEvent } from 'react';
+
+// 타입 정의
+interface Currency {
+  code: string;
+  symbol: string;
+  name: string;
+  rate: number;
+}
+
+interface TransactionItem {
+  id: number;
+  date: string;
+  person: string;
+  amount: number;
+  category: string;
+  currency: Currency;
+  isExpense: boolean;
+}
+
+interface Transactions {
+  [dateKey: string]: TransactionItem[];
+}
+
+interface SpenderTotal {
+  person: string;
+  amount: number;
+}
+
+interface TripTotals {
+  income: number;
+  expense: number;
+}
+
+interface TotalsByCurrencyData {
+  income: number;
+  expense: number;
+  symbol: string;
+  name: string;
+  rate: number;
+}
+
+interface TotalsByCurrency {
+  [currencyCode: string]: TotalsByCurrencyData;
+}
+
 
 // 통화 정보
-const currencies = [
+const currencies: Currency[] = [
   { code: 'KRW', symbol: '₩', name: '원', rate: 1 },
   { code: 'THB', symbol: '฿', name: '바트', rate: 42 },
   { code: 'USD', symbol: '$', name: '달러', rate: 1350 },
   { code: 'EUR', symbol: '€', name: '유로', rate: 1450 }
 ];
 
-const ExpenseApp = () => {
+const ExpenseApp: React.FC = () => {
   // 상태
-  const [currentDate] = useState(new Date());
-  const [selectedDate, setSelectedDate] = useState(new Date());
-  const [transactions, setTransactions] = useState({});
-  const [isLocked, setIsLocked] = useState(false);
-  const [spenderTotals, setSpenderTotals] = useState([]);
-  const [dailySpenderTotals, setDailySpenderTotals] = useState([]);
+  const [currentDate] = useState<Date>(new Date());
+  const [selectedDate, setSelectedDate] = useState<Date>(new Date());
+  const [transactions, setTransactions] = useState<Transactions>({});
+  const [isLocked, setIsLocked] = useState<boolean>(false);
+  const [spenderTotals, setSpenderTotals] = useState<SpenderTotal[]>([]);
+  const [dailySpenderTotals, setDailySpenderTotals] = useState<SpenderTotal[]>([]);
   
   // 탭 상태
-  const [activeTab, setActiveTab] = useState('total');
-  const [totalSubTab, setTotalSubTab] = useState('summary');
-  const [todaySubTab, setTodaySubTab] = useState('summary');
+  const [activeTab, setActiveTab] = useState<'total' | 'today'>('total');
+  const [totalSubTab, setTotalSubTab] = useState<'summary' | 'byPerson'>('summary');
+  const [todaySubTab, setTodaySubTab] = useState<'summary' | 'byPerson'>('summary');
   
   // 입력 상태
-  const [person, setPerson] = useState('');
-  const [amount, setAmount] = useState('');
-  const [displayAmount, setDisplayAmount] = useState('');
-  const [amountText, setAmountText] = useState('');
-  const [category, setCategory] = useState('');
-  const [currency, setCurrency] = useState(currencies[0]);
-  const [showCurrency, setShowCurrency] = useState(false);
-  const [isExpense, setIsExpense] = useState(true);
+  const [person, setPerson] = useState<string>('');
+  const [amount, setAmount] = useState<string>('');
+  const [displayAmount, setDisplayAmount] = useState<string>('');
+  const [amountText, setAmountText] = useState<string>('');
+  const [category, setCategory] = useState<string>('');
+  const [currency, setCurrency] = useState<Currency>(currencies[0]);
+  const [showCurrency, setShowCurrency] = useState<boolean>(false);
+  const [isExpense, setIsExpense] = useState<boolean>(true);
   
   // 태그
-  const [savedPersons, setSavedPersons] = useState([]);
-  const [savedExpensePersons, setSavedExpensePersons] = useState([]);
-  const [savedIncomePersons, setSavedIncomePersons] = useState([]);
-  const [savedCategories, setSavedCategories] = useState([]);
-  const [savedExpenseCategories, setSavedExpenseCategories] = useState([]);
-  const [savedIncomeCategories, setSavedIncomeCategories] = useState([]);
+  const [savedPersons, setSavedPersons] = useState<string[]>([]);
+  const [savedExpensePersons, setSavedExpensePersons] = useState<string[]>([]);
+  const [savedIncomePersons, setSavedIncomePersons] = useState<string[]>([]);
+  const [savedCategories, setSavedCategories] = useState<string[]>([]);
+  const [savedExpenseCategories, setSavedExpenseCategories] = useState<string[]>([]);
+  const [savedIncomeCategories, setSavedIncomeCategories] = useState<string[]>([]);
   
   // 전체 여행 합계 상태
-  const [tripTotals, setTripTotals] = useState({
+  const [tripTotals, setTripTotals] = useState<TripTotals>({
     income: 0,
     expense: 0
   });
   
   // 유틸리티 함수
-  const formatDate = (date) => {
+  const formatDate = (date: Date): string => {
     const year = date.getFullYear();
     const month = String(date.getMonth() + 1).padStart(2, '0');
     const day = String(date.getDate()).padStart(2, '0');
     return `${year}-${month}-${day}`;
   };
 
-  const formatDateDisplay = (date) => {
+  const formatDateDisplay = (date: Date): string => {
     const year = date.getFullYear();
     const month = date.getMonth() + 1;
     const day = date.getDate();
@@ -62,54 +107,55 @@ const ExpenseApp = () => {
     return `${year}년 ${month}월 ${day}일 (${dayOfWeek})`;
   };
 
-  const formatNumber = (num) => {
+  const formatNumber = (num: number): string => {
     if (isNaN(num)) return '0';
     return num.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ",");
   };
 
   // 금액을 한글로 변환
-  const numberToKorean = (num) => {
+  const numberToKorean = (num: number): string => {
     if (isNaN(num) || num === 0) return '0';
     
     let result = '';
+    let n = num; // 원본 num을 변경하지 않기 위해 복사본 사용
     
-    if (num >= 100000000) {
-      const billions = Math.floor(num / 100000000);
+    if (n >= 100000000) {
+      const billions = Math.floor(n / 100000000);
       result += billions + '억';
-      num %= 100000000;
-      if (num === 0) return result;
+      n %= 100000000;
+      if (n === 0) return result;
       result += ' ';
     }
     
-    if (num >= 10000) {
-      const tenThousands = Math.floor(num / 10000);
+    if (n >= 10000) {
+      const tenThousands = Math.floor(n / 10000);
       result += tenThousands + '만';
-      num %= 10000;
-      if (num === 0) return result;
+      n %= 10000;
+      if (n === 0) return result;
       result += ' ';
     }
     
-    if (num >= 1000) {
-      const thousands = Math.floor(num / 1000);
+    if (n >= 1000) {
+      const thousands = Math.floor(n / 1000);
       result += thousands + '천';
-      num %= 1000;
-      if (num === 0) return result;
+      n %= 1000;
+      if (n === 0) return result;
       result += ' ';
     }
     
-    if (num > 0) {
-      result += num;
+    if (n > 0) {
+      result += n;
     }
     
-    return result;
+    return result.trim();
   };
   
   // 현재 날짜의 거래내역 (최신순)
-  const currentItems = (transactions[formatDate(selectedDate)] || [])
+  const currentItems: TransactionItem[] = (transactions[formatDate(selectedDate)] || [])
     .sort((a, b) => b.id - a.id);
   
   // 통화별 총계 계산
-  const totals = currentItems.reduce((acc, item) => {
+  const totals: TotalsByCurrency = currentItems.reduce((acc: TotalsByCurrency, item: TransactionItem) => {
     const code = item.currency?.code || 'KRW';
     const rate = item.currency?.rate || 1;
     
@@ -130,17 +176,15 @@ const ExpenseApp = () => {
     }
     
     return acc;
-  }, {});
+  }, {} as TotalsByCurrency);
   
   // 오늘의 지출자별 지출액 계산
-  const calculateDailySpenderTotals = () => {
-    const spenderMap = {};
+  const calculateDailySpenderTotals = (): SpenderTotal[] => {
+    const spenderMap: { [key: string]: number } = {};
     const dateKey = formatDate(selectedDate);
     
-    // 오늘 날짜의 거래만 필터링
-    const todayTransactions = transactions[dateKey] || [];
+    const todayTransactions: TransactionItem[] = transactions[dateKey] || [];
     
-    // 오늘 거래에서 지출자별 금액 합산
     todayTransactions.forEach(item => {
       if (item.isExpense) {
         const amountInKRW = item.amount * (item.currency?.rate || 1);
@@ -153,18 +197,16 @@ const ExpenseApp = () => {
       }
     });
     
-    // 배열로 변환 후 금액 내림차순 정렬
     return Object.entries(spenderMap)
-      .map(([person, amount]) => ({ person, amount }))
+      .map(([person, amount]): SpenderTotal => ({ person, amount: amount as number }))
       .sort((a, b) => b.amount - a.amount);
   };
   
   // 지출자별 지출액 계산
-  const calculateSpenderTotals = () => {
-    const spenderMap = {};
+  const calculateSpenderTotals = (): SpenderTotal[] => {
+    const spenderMap: { [key: string]: number } = {};
     
-    // 모든 거래에서 지출자별 금액 합산
-    Object.values(transactions).forEach(dateTransactions => {
+    Object.values(transactions).forEach((dateTransactions: TransactionItem[]) => {
       dateTransactions.forEach(item => {
         if (item.isExpense) {
           const amountInKRW = item.amount * (item.currency?.rate || 1);
@@ -178,19 +220,17 @@ const ExpenseApp = () => {
       });
     });
     
-    // 배열로 변환 후 금액 내림차순 정렬
     return Object.entries(spenderMap)
-      .map(([person, amount]) => ({ person, amount }))
+      .map(([person, amount]): SpenderTotal => ({ person, amount: amount as number }))
       .sort((a, b) => b.amount - a.amount);
   };
   
   // 전체 여행 합계 계산
-  const calculateTripTotals = () => {
+  const calculateTripTotals = (): TripTotals => {
     let totalExpense = 0;
     let totalIncome = 0;
     
-    // 모든 날짜의 모든 거래를 합산
-    Object.values(transactions).forEach(dateTransactions => {
+    Object.values(transactions).forEach((dateTransactions: TransactionItem[]) => {
       dateTransactions.forEach(item => {
         const amountInKRW = item.amount * (item.currency?.rate || 1);
         
@@ -250,8 +290,7 @@ const ExpenseApp = () => {
   // 데이터 로드
   const loadData = () => {
     try {
-      // 예시 데이터
-      const mockTransactions = {
+      const mockTransactions: Transactions = {
         [formatDate(new Date())]: [
           {
             id: 1,
@@ -283,74 +322,64 @@ const ExpenseApp = () => {
         ]
       };
       
-      // 실제 데이터 로드 시도
       const saved = localStorage.getItem('expense-app-data');
       if (saved) {
-        setTransactions(JSON.parse(saved));
+        setTransactions(JSON.parse(saved) as Transactions);
       } else {
-        // 예시 데이터 사용
         setTransactions(mockTransactions);
         localStorage.setItem('expense-app-data', JSON.stringify(mockTransactions));
       }
       
-      // 예시 태그 데이터
-      const mockExpensePersons = ['김철수', '이영희', '박지민'];
-      const mockIncomePersons = ['호텔환전소', '현지은행', '김철수'];
-      const mockExpenseCategories = ['식사', '숙박', '교통', '쇼핑'];
-      const mockIncomeCategories = ['환전', '환불', '정산'];
+      const mockExpensePersons: string[] = ['김철수', '이영희', '박지민'];
+      const mockIncomePersons: string[] = ['호텔환전소', '현지은행', '김철수'];
+      const mockExpenseCategories: string[] = ['식사', '숙박', '교통', '쇼핑'];
+      const mockIncomeCategories: string[] = ['환전', '환불', '정산'];
       
-      // 지출자 로드
       const savedExpensePersonsList = localStorage.getItem('expense-app-expense-persons');
       if (savedExpensePersonsList) {
-        setSavedExpensePersons(JSON.parse(savedExpensePersonsList));
+        setSavedExpensePersons(JSON.parse(savedExpensePersonsList) as string[]);
       } else {
         setSavedExpensePersons(mockExpensePersons);
         localStorage.setItem('expense-app-expense-persons', JSON.stringify(mockExpensePersons));
       }
       
-      // 수입자 로드
       const savedIncomePersonsList = localStorage.getItem('expense-app-income-persons');
       if (savedIncomePersonsList) {
-        setSavedIncomePersons(JSON.parse(savedIncomePersonsList));
+        setSavedIncomePersons(JSON.parse(savedIncomePersonsList) as string[]);
       } else {
         setSavedIncomePersons(mockIncomePersons);
         localStorage.setItem('expense-app-income-persons', JSON.stringify(mockIncomePersons));
       }
       
-      // 지출 항목 로드
       const savedExpenseCategoriesList = localStorage.getItem('expense-app-expense-categories');
       if (savedExpenseCategoriesList) {
-        setSavedExpenseCategories(JSON.parse(savedExpenseCategoriesList));
+        setSavedExpenseCategories(JSON.parse(savedExpenseCategoriesList) as string[]);
       } else {
         setSavedExpenseCategories(mockExpenseCategories);
         localStorage.setItem('expense-app-expense-categories', JSON.stringify(mockExpenseCategories));
       }
       
-      // 수입 항목 로드
       const savedIncomeCategoriesList = localStorage.getItem('expense-app-income-categories');
       if (savedIncomeCategoriesList) {
-        setSavedIncomeCategories(JSON.parse(savedIncomeCategoriesList));
+        setSavedIncomeCategories(JSON.parse(savedIncomeCategoriesList) as string[]);
       } else {
         setSavedIncomeCategories(mockIncomeCategories);
         localStorage.setItem('expense-app-income-categories', JSON.stringify(mockIncomeCategories));
       }
       
-      // 기존 호환성을 위한 전체 태그 데이터 설정
       setSavedPersons([...mockExpensePersons, ...mockIncomePersons]);
       setSavedCategories([...mockExpenseCategories, ...mockIncomeCategories]);
       
-      // 마지막 지출자
       const lastPerson = localStorage.getItem('expense-app-last-person');
       if (lastPerson) {
         setPerson(lastPerson);
       } else {
-        setPerson(mockExpensePersons[0]);
+        setPerson(mockExpensePersons[0] || '');
       }
       
-      // 마지막 통화
       const lastCurrency = localStorage.getItem('expense-app-last-currency');
       if (lastCurrency) {
-        const parsed = JSON.parse(lastCurrency);
+        const parsed = JSON.parse(lastCurrency) as Currency;
         const found = currencies.find(c => c.code === parsed.code);
         if (found) {
           setCurrency(found);
@@ -364,7 +393,7 @@ const ExpenseApp = () => {
   // 마감 상태 확인
   const checkLockStatus = () => {
     try {
-      const locked = JSON.parse(localStorage.getItem('expense-app-locked') || '{}');
+      const locked = JSON.parse(localStorage.getItem('expense-app-locked') || '{}') as {[key: string]: boolean};
       setIsLocked(locked[formatDate(selectedDate)] === true);
     } catch (error) {
       console.error('마감 상태 확인 오류:', error);
@@ -372,42 +401,40 @@ const ExpenseApp = () => {
   };
   
   // 날짜 변경
-  const changeDate = (offset) => {
+  const changeDate = (offset: number) => {
     const newDate = new Date(selectedDate);
     newDate.setDate(newDate.getDate() + offset);
     setSelectedDate(newDate);
   };
   
   // 지출자 선택
-  const selectPerson = (selectedPerson) => {
+  const selectPerson = (selectedPerson: string) => {
     setPerson(selectedPerson);
     saveNewPerson(selectedPerson);
   };
   
   // 항목 선택
-  const selectCategory = (selectedCategory) => {
+  const selectCategory = (selectedCategory: string) => {
     setCategory(selectedCategory);
     saveNewCategory(selectedCategory);
   };
   
   // 통화 선택
-  const selectCurrency = (selected) => {
+  const selectCurrency = (selected: Currency) => {
     setCurrency(selected);
     localStorage.setItem('expense-app-last-currency', JSON.stringify(selected));
     setShowCurrency(false);
   };
   
   // 새 지출자 저장
-  const saveNewPerson = (name) => {
+  const saveNewPerson = (name: string) => {
     if (!name) return;
     
-    // 기존 호환성을 위한 저장
     const filteredAll = savedPersons.filter(p => p !== name);
     const updatedAll = [name, ...filteredAll];
     setSavedPersons(updatedAll);
-    localStorage.setItem('expense-app-persons', JSON.stringify(updatedAll));
+    localStorage.setItem('expense-app-persons', JSON.stringify(updatedAll)); // Legacy
     
-    // 지출/수입 구분하여 저장
     if (isExpense) {
       const filteredExpense = savedExpensePersons.filter(p => p !== name);
       const updatedExpense = [name, ...filteredExpense];
@@ -424,16 +451,14 @@ const ExpenseApp = () => {
   };
   
   // 새 항목 저장
-  const saveNewCategory = (name) => {
+  const saveNewCategory = (name: string) => {
     if (!name) return;
     
-    // 기존 호환성을 위한 저장
     const filteredAll = savedCategories.filter(c => c !== name);
     const updatedAll = [name, ...filteredAll]; 
     setSavedCategories(updatedAll);
-    localStorage.setItem('expense-app-categories', JSON.stringify(updatedAll));
+    localStorage.setItem('expense-app-categories', JSON.stringify(updatedAll)); // Legacy
     
-    // 지출/수입 구분하여 저장
     if (isExpense) {
       const filteredExpense = savedExpenseCategories.filter(c => c !== name);
       const updatedExpense = [name, ...filteredExpense];
@@ -448,15 +473,13 @@ const ExpenseApp = () => {
   };
   
   // 지출자 삭제
-  const deletePerson = (name, e) => {
+  const deletePerson = (name: string, e: MouseEvent<HTMLButtonElement>) => {
     e.stopPropagation();
     
-    // 기존 호환성
     const updatedAll = savedPersons.filter(p => p !== name);
     setSavedPersons(updatedAll);
-    localStorage.setItem('expense-app-persons', JSON.stringify(updatedAll));
+    localStorage.setItem('expense-app-persons', JSON.stringify(updatedAll)); // Legacy
     
-    // 지출/수입 구분
     if (isExpense) {
       const updatedExpense = savedExpensePersons.filter(p => p !== name);
       setSavedExpensePersons(updatedExpense);
@@ -473,15 +496,13 @@ const ExpenseApp = () => {
   };
   
   // 항목 삭제
-  const deleteCategory = (name, e) => {
+  const deleteCategory = (name: string, e: MouseEvent<HTMLButtonElement>) => {
     e.stopPropagation();
     
-    // 기존 호환성
     const updatedAll = savedCategories.filter(c => c !== name);
     setSavedCategories(updatedAll);
-    localStorage.setItem('expense-app-categories', JSON.stringify(updatedAll));
+    localStorage.setItem('expense-app-categories', JSON.stringify(updatedAll)); // Legacy
     
-    // 지출/수입 구분
     if (isExpense) {
       const updatedExpense = savedExpenseCategories.filter(c => c !== name);
       setSavedExpenseCategories(updatedExpense);
@@ -515,12 +536,10 @@ const ExpenseApp = () => {
       return;
     }
     
-    // 새 지출자/항목 저장
     saveNewPerson(person);
     saveNewCategory(category);
     
-    // 새 거래 추가
-    const item = {
+    const item: TransactionItem = {
       id: Date.now(),
       date: formatDate(selectedDate),
       person,
@@ -531,7 +550,7 @@ const ExpenseApp = () => {
     };
     
     const dateKey = formatDate(selectedDate);
-    const updated = { ...transactions };
+    const updated: Transactions = { ...transactions };
     
     if (!updated[dateKey]) {
       updated[dateKey] = [];
@@ -542,7 +561,6 @@ const ExpenseApp = () => {
     setTransactions(updated);
     localStorage.setItem('expense-app-data', JSON.stringify(updated));
     
-    // 입력 초기화 (지출자 제외)
     setAmount('');
     setDisplayAmount('');
     setAmountText('');
@@ -550,14 +568,14 @@ const ExpenseApp = () => {
   };
   
   // 거래 삭제
-  const deleteTransaction = (id) => {
+  const deleteTransaction = (id: number) => {
     if (isLocked) {
       alert('이미 마감된 날짜입니다.');
       return;
     }
     
     const dateKey = formatDate(selectedDate);
-    const updated = { ...transactions };
+    const updated: Transactions = { ...transactions };
     
     if (updated[dateKey]) {
       updated[dateKey] = updated[dateKey].filter(item => item.id !== id);
@@ -569,10 +587,10 @@ const ExpenseApp = () => {
   // 마감 토글
   const toggleLock = () => {
     const dateKey = formatDate(selectedDate);
-    let locked = {};
+    let locked: {[key: string]: boolean} = {};
     
     try {
-      locked = JSON.parse(localStorage.getItem('expense-app-locked') || '{}');
+      locked = JSON.parse(localStorage.getItem('expense-app-locked') || '{}') as {[key: string]: boolean};
     } catch (error) {
       console.error('마감 데이터 로드 오류:', error);
     }
@@ -588,13 +606,13 @@ const ExpenseApp = () => {
   };
   
   // 금액 입력 처리
-  const handleAmountChange = (e) => {
+  const handleAmountChange = (e: ChangeEvent<HTMLInputElement>) => {
     const value = e.target.value.replace(/[^\d,]/g, '');
     setAmount(value);
   };
 
   // 수입/지출 모드 전환
-  const toggleExpenseMode = (newMode) => {
+  const toggleExpenseMode = (newMode: boolean) => {
     if (isExpense !== newMode) {
       setIsExpense(newMode);
     }
@@ -673,7 +691,7 @@ const ExpenseApp = () => {
                   {todaySubTab === 'summary' ? (
                     <div className="max-h-32 overflow-y-auto pr-1">
                       {Object.entries(totals).length > 0 ? (
-                        Object.entries(totals).map(([code, data], index) => (
+                        Object.entries(totals).map(([code, data]: [string, TotalsByCurrencyData], index) => (
                           <div key={index} className="mb-2 pb-1 border-b border-blue-400 last:border-0">
                             <div className="font-bold text-sm">
                               {data.name} ({data.symbol})
@@ -832,7 +850,7 @@ const ExpenseApp = () => {
               className="w-full p-2 border rounded"
               placeholder={isExpense ? "누가 지출했나요?" : "누가 수입을 얻었나요?"}
               value={person}
-              onChange={(e) => setPerson(e.target.value)}
+              onChange={(e: ChangeEvent<HTMLInputElement>) => setPerson(e.target.value)}
             />
             
             {/* 태그 목록 (가로 스크롤) */}
@@ -885,7 +903,7 @@ const ExpenseApp = () => {
             {amountText && (
               <div className="mt-1 text-sm text-gray-500">
                 {amountText}
-                {currency.code !== 'KRW' && displayAmount && (
+                {currency.code !== 'KRW' && displayAmount && amount && (
                   <span className="ml-2">
                     (약 {formatNumber(Math.round(parseInt(amount.replace(/,/g, '')) * currency.rate))}원)
                   </span>
@@ -920,7 +938,7 @@ const ExpenseApp = () => {
               className="w-full p-2 border rounded"
               placeholder={isExpense ? "어디에 지출했나요?" : "어디서 수입이 발생했나요?"}
               value={category}
-              onChange={(e) => setCategory(e.target.value)}
+              onChange={(e: ChangeEvent<HTMLInputElement>) => setCategory(e.target.value)}
             />
             
             {/* 태그 목록 (가로 스크롤) */}
@@ -992,7 +1010,7 @@ const ExpenseApp = () => {
           <div className="text-gray-500 text-center p-4">거래 내역이 없습니다.</div>
         ) : (
           <div>
-            {currentItems.map((item) => (
+            {currentItems.map((item: TransactionItem) => (
               <div key={item.id} className="border-b py-3 flex justify-between items-center">
                 <div>
                   <div className="font-bold">{item.person}</div>
