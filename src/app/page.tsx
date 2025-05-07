@@ -292,91 +292,62 @@ const ExpenseApp: React.FC = () => {
   // 데이터 로드
   const loadData = () => {
     try {
-      const mockTransactions: Transactions = {
-        [formatDate(new Date())]: [
-          {
-            id: 1,
-            date: formatDate(new Date()),
-            person: '김철수',
-            amount: 500,
-            category: '식사',
-            currency: currencies[1],
-            isExpense: true
-          },
-          {
-            id: 2,
-            date: formatDate(new Date()),
-            person: '이영희',
-            amount: 300,
-            category: '교통',
-            currency: currencies[1],
-            isExpense: true
-          },
-          {
-            id: 3,
-            date: formatDate(new Date()),
-            person: '호텔환전소',
-            amount: 500,
-            category: '환전',
-            currency: currencies[1],
-            isExpense: false
-          }
-        ]
-      };
-      
-      const saved = localStorage.getItem('expense-app-data');
-      if (saved) {
-        setTransactions(JSON.parse(saved) as Transactions);
+      const savedTransactions = localStorage.getItem('expense-app-data');
+      if (savedTransactions) {
+        setTransactions(JSON.parse(savedTransactions) as Transactions);
       } else {
-        setTransactions(mockTransactions);
-        localStorage.setItem('expense-app-data', JSON.stringify(mockTransactions));
+        setTransactions({});
+        localStorage.setItem('expense-app-data', JSON.stringify({}));
       }
       
-      const mockExpensePersons: string[] = ['김철수', '이영희', '박지민'];
-      const mockIncomePersons: string[] = ['호텔환전소', '현지은행', '김철수'];
-      const mockExpenseCategories: string[] = ['식사', '숙박', '교통', '쇼핑'];
-      const mockIncomeCategories: string[] = ['환전', '환불', '정산'];
-      
+      let loadedExpensePersons: string[] = [];
       const savedExpensePersonsList = localStorage.getItem('expense-app-expense-persons');
       if (savedExpensePersonsList) {
-        setSavedExpensePersons(JSON.parse(savedExpensePersonsList) as string[]);
+        loadedExpensePersons = JSON.parse(savedExpensePersonsList) as string[];
+        setSavedExpensePersons(loadedExpensePersons);
       } else {
-        setSavedExpensePersons(mockExpensePersons);
-        localStorage.setItem('expense-app-expense-persons', JSON.stringify(mockExpensePersons));
+        setSavedExpensePersons([]);
+        localStorage.setItem('expense-app-expense-persons', JSON.stringify([]));
       }
       
+      let loadedIncomePersons: string[] = [];
       const savedIncomePersonsList = localStorage.getItem('expense-app-income-persons');
       if (savedIncomePersonsList) {
-        setSavedIncomePersons(JSON.parse(savedIncomePersonsList) as string[]);
+        loadedIncomePersons = JSON.parse(savedIncomePersonsList) as string[];
+        setSavedIncomePersons(loadedIncomePersons);
       } else {
-        setSavedIncomePersons(mockIncomePersons);
-        localStorage.setItem('expense-app-income-persons', JSON.stringify(mockIncomePersons));
+        setSavedIncomePersons([]);
+        localStorage.setItem('expense-app-income-persons', JSON.stringify([]));
       }
       
+      let loadedExpenseCategories: string[] = [];
       const savedExpenseCategoriesList = localStorage.getItem('expense-app-expense-categories');
       if (savedExpenseCategoriesList) {
-        setSavedExpenseCategories(JSON.parse(savedExpenseCategoriesList) as string[]);
+        loadedExpenseCategories = JSON.parse(savedExpenseCategoriesList) as string[];
+        setSavedExpenseCategories(loadedExpenseCategories);
       } else {
-        setSavedExpenseCategories(mockExpenseCategories);
-        localStorage.setItem('expense-app-expense-categories', JSON.stringify(mockExpenseCategories));
+        setSavedExpenseCategories([]);
+        localStorage.setItem('expense-app-expense-categories', JSON.stringify([]));
       }
       
+      let loadedIncomeCategories: string[] = [];
       const savedIncomeCategoriesList = localStorage.getItem('expense-app-income-categories');
       if (savedIncomeCategoriesList) {
-        setSavedIncomeCategories(JSON.parse(savedIncomeCategoriesList) as string[]);
+        loadedIncomeCategories = JSON.parse(savedIncomeCategoriesList) as string[];
+        setSavedIncomeCategories(loadedIncomeCategories);
       } else {
-        setSavedIncomeCategories(mockIncomeCategories);
-        localStorage.setItem('expense-app-income-categories', JSON.stringify(mockIncomeCategories));
+        setSavedIncomeCategories([]);
+        localStorage.setItem('expense-app-income-categories', JSON.stringify([]));
       }
       
-      setSavedPersons([...mockExpensePersons, ...mockIncomePersons]);
-      setSavedCategories([...mockExpenseCategories, ...mockIncomeCategories]);
+      setSavedPersons([...loadedExpensePersons, ...loadedIncomePersons]);
+      setSavedCategories([...loadedExpenseCategories, ...loadedIncomeCategories]);
       
       const lastPerson = localStorage.getItem('expense-app-last-person');
       if (lastPerson) {
         setPerson(lastPerson);
       } else {
-        setPerson(mockExpensePersons[0] || '');
+        setPerson('');
       }
       
       const lastCurrency = localStorage.getItem('expense-app-last-currency');
@@ -650,7 +621,7 @@ const ExpenseApp: React.FC = () => {
       
       {/* 요약 */}
       <div className="bg-blue-500 text-white p-4 rounded-lg shadow-md mb-4">
-        {Object.keys(totals).length > 0 || spenderTotals.length > 0 ? (
+        {Object.keys(totals).length > 0 || spenderTotals.length > 0 || tripTotals.income > 0 || tripTotals.expense > 0 ? (
           <div className="space-y-3">
             {/* 이번 여행 전체 및 오늘 탭 */}
             <div className="flex border-b border-blue-400 pb-1">
@@ -782,7 +753,7 @@ const ExpenseApp: React.FC = () => {
                       {/* 잔액 */}
                       <div className="flex justify-between items-center font-bold">
                         <div className="text-sm">잔액:</div>
-                        <div className={tripTotals.income > tripTotals.expense ? "text-green-300" : "text-red-300"}>
+                        <div className={tripTotals.income >= tripTotals.expense ? "text-green-300" : "text-red-300"}>
                           ₩ {formatNumber(Math.round(tripTotals.income - tripTotals.expense))}
                         </div>
                       </div>
